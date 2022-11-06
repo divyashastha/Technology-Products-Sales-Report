@@ -1,0 +1,271 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+library(tidyr)
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(scales)
+library(ggforce)
+library(dygraphs)
+library(gganimate)
+library(ggrepel)
+library(plotly)
+library(ggthemes)
+```
+
+#### Week 7: DATA TRANSLATION CHALLENGE
+
+#### Name: Divya Ramesh
+
+## AMAZON 2019 ANNUAL SALES REPORT {.tabset}
+
+### <span style="color: mistyrose4;">Introduction</span>
+
+
+**Audience**: Managers in Amazon's tech products division - presenting ideas to increase revenues.
+
+
+**Graph1**: The graph below shows the total technology products sales generated in the Urban Areas of the US over the past 12 months in the Year 2019. 
+There is an overall increase in the sales and the sales peak towards end of the year, in Q4 - the holiday season.
+
+Note:Hover over each point on the graph to read the sales figure for each month.
+
+
+```{r}
+salesdat <- load("sales_data.Rdata")
+salesdat <- sales
+```
+
+```{r}
+salesdat <- salesdat %>%
+  mutate(day = day(DateTime)) %>%
+  mutate(month = month(DateTime)) %>%
+  mutate(year = year(DateTime)) %>%
+  mutate(week = week(DateTime)) %>%
+  filter(year == 2019)
+```
+
+```{r, warning=FALSE}
+sales_amount <- salesdat %>%
+  select(year,week,month,day,Product,PriceEach,Quantity) %>%
+  filter(year==2019) %>%
+  group_by(month) %>%
+  summarise(Total_sales = sum(as.numeric(PriceEach)*as.numeric(Quantity)))
+
+s1 <- sales_amount %>%
+  ggplot(aes(x=month, y=Total_sales)) +
+  geom_line(color=alpha("#69b3a2", 0.9), size=0.5) +
+  geom_point(color='mistyrose4') +
+  scale_x_continuous(breaks = 0:2100) +
+  scale_y_continuous(labels  = 
+                       label_number(scale = 1e-6, suffix = "m", accuracy = 1)) +
+  annotate(geom='label', label = 'Amazon Sales\n Peak towards Year End', x=11, y=26000,size=7/.pt, color='darkblue') +
+  geom_label(aes(label = Total_sales), nudge_x = 0.25, nudge_y = 0.25, size = 2.5) +
+  labs(x = "Jan to Dec 2019", y = "Total Sales each Month(in USD)",
+       title = str_to_upper("Total Technology Products Sales in 2019")) +
+  theme_minimal()+
+  theme(
+    axis.line = element_line(color='black'),
+    text = element_text(family = "serif"),
+    plot.background = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title.position = "plot") 
+
+ggplotly(s1) 
+```
+**Graph 2**: Doing a further analysis of the total number of products purchased in each month, also shows that, December month is when 
+customers have done a huge amount of shopping on the website,i.e., 28,114 products purchased in December. This is more than double of 
+what has been purchased in January, and 42% more that of November, despite the fact that there is black Friday and cyber Monday sales 
+in November. We can see that in December since maximum number of products have been purchased,that explains the casue of maximum revenue 
+generated. Let us find out the products customers are interested to shop in December.
+
+
+
+```{r}
+sales_product <- salesdat %>%
+  select(year,week,month,day,Product,Quantity) %>%
+  group_by(month) %>%
+  summarise(Number_of_Items_Sold = sum(as.numeric(Quantity)))
+
+sales_product %>%
+  ggplot(aes(x=month, y=Number_of_Items_Sold)) +
+  geom_col(fill=alpha("#69b3a2", 0.6)) +
+  scale_x_continuous(breaks = 1:12) +
+  annotate(geom='label', label = 'Customer Purchases\n Peak towards Year End', x=10.5, y=26000,size=10/.pt, color='mistyrose4') +
+  geom_label(aes(label = Number_of_Items_Sold),nudge_y=-0.25, size = 2.0) +
+  labs(x = "Jan to Dec 2019", y = "Number of Items Sold",
+       title = str_to_upper("Number of Items sold every month in 2019") ) +
+  theme_minimal() +
+  theme(
+    axis.line = element_line(color='black'),
+    text = element_text(family = "serif"),
+    plot.background = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title.position = "plot") 
+```
+
+### <span style="color: mistyrose4;">Peak of Holiday Season</span>
+
+
+**Graph 3**: We can see that the sales of AAA Batteries and AA Batteries top the list in December, but do they contribute or explain 
+the high sales volume in December as they are only priced at USD2.99 and USD3.84 each, compared to more expensive items that are also 
+sold in more than hundreds or thousands.
+
+
+
+```{r}
+sd <- salesdat %>%
+  filter(month==12) %>%
+  group_by(Product) %>%
+  summarise(Number_of_Each_Item = sum(as.numeric(Quantity))) %>%
+  arrange(-Number_of_Each_Item) %>%
+  mutate(Product = case_when(Product == "AAA Batteries (4-pack)" ~ "AAA Batt",
+                             Product == "AA Batteries (4-pack)" ~ "AA Batt",
+                             Product == "USB-C Charging Cable" ~ "USB-C Charger",
+                             Product == "Lightning Charging Cable" ~ "Lightng Charger",
+                             Product == "Wired Headphones" ~ "Wired Headphones",
+                             Product == "Bose SoundSport Headphones" ~ "Bose SoundSport",
+                             Product == "27in FHD Monitor" ~ "27in Monitor",
+                             Product == "Apple Airpods Headphones" ~ "Airpods",
+                             Product == "27in 4K Gaming Monitor" ~ "Gaming Monitor",
+                             Product == "34in Ultrawide Monitor" ~ "34in Monitor",
+                             Product == "Macbook Pro Laptop" ~ "Macbook Pro",
+                             Product == "ThinkPad Laptop" ~ "TP Laptop",
+                             Product == "Vareebadd Phone" ~ "Vb Phone",
+                             Product == "LG Washing Machine" ~ "LG Wash Machine",
+                             Product == "iPhone" ~ "iPhone",
+                             Product == "Google Phone" ~ "Google Phone",
+                             Product == "Flatscreen TV" ~ "Flatscreen TV",
+                             Product == "20in Monitor" ~ "20in Monitor",
+                             Product == "LG Dryer" ~ "LG Dryer")) 
+sd<-cbind(sd, "id"=1:nrow(sd)) 
+  
+  
+# Set a number of 'empty bar'
+empty_bar=0
+
+# Add lines to the initial sd dataset
+to_add = matrix(NA, empty_bar, ncol(sd))
+colnames(to_add) = colnames(sd)
+sd=rbind(sd, to_add)
+sd$id=seq(1, nrow(sd))
+
+# Get the name and the y position of each label
+label_sd=sd
+number_of_bar=nrow(label_sd)
+angle= 90 - 360 * (label_sd$id-0.5) /number_of_bar
+label_sd$hjust<-ifelse( angle < -90, 1, 0)
+label_sd$angle<-ifelse(angle < -90, angle+180, angle)
+label_sd$Product <- paste(label_sd$Product, " (", label_sd$Number_of_Each_Item,")", sep="")
+
+# Make the plot
+ggplot(sd, aes(x=as.factor(id), y=Number_of_Each_Item)) +       
+  geom_bar(stat="identity", fill=alpha("#69b3a2", 0.8)) +
+  ylim(-5000,5900) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank()) +
+  coord_polar(start = 0) +
+  geom_text(data=label_sd, aes(x=id, y=Number_of_Each_Item+200, label=Product ), color="black", fontface="bold",alpha=0.6, size=2.1, angle= label_sd$angle, hjust=label_sd$hjust ) +
+  labs(title = str_to_upper("Products sold in December"), family = "serif") 
+```
+
+### <span style="color: mistyrose4;">Top 15 Tech Products</span>
+
+
+**Graph 4**: Though batteries are sold in high volumes (AAA Batteries = 31012 nos. and AA Batteries = 27635 nos.), followed by USB-C 
+Charging Cable, Lightning Charging Cable and Wired Headphones all sold more than 20,000 in quantity, these items do not account for the high sales 
+generated by Amazon. The sales of these items sold more than 20,000 in volume contributes to less than approximately 3.5% of the total sales. 
+On the contrary, the total sales of **Macbook Pro Laptops** alone accounts for approximately **25% of the total sales** in the Year 2019. 
+Hence let us further analyze the sales of high revenue generating products (>USD 4 million) across each month.
+
+```{r}
+
+Items <- salesdat %>%
+  filter(year==2019) %>%
+  group_by(Product) %>%
+  summarise(Number_of_Each_Item = sum(as.numeric(Quantity)),
+            Total_sales = sum(as.numeric(PriceEach)*as.numeric(Quantity))) %>%
+  arrange(-Number_of_Each_Item) %>%
+  slice(1:15)
+
+Items %>%
+  ggplot(aes(x=Number_of_Each_Item, y=Total_sales, fill=Product)) +
+  geom_point(shape=17, color='mistyrose3')+
+  scale_y_continuous(labels  = 
+                       label_number(scale = 1e-6, suffix = "m", accuracy = 1)) +
+  geom_label_repel(aes(label = Product), size = 2.6, fontface = 'bold', colour="white", segment.colour="black", fill=alpha("#69b3a2", 0.8)) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid.minor = element_blank(),
+        text = element_text(family = "serif"),
+        axis.line = element_line(color='black')) +
+  labs(x = "Number of each Product sold", y = "Total Sales of each Product(in USD)",
+       title = str_to_upper("Amazon Sales of top 15 Products in 2019")) 
+
+```
+
+### <span style="color: mistyrose4;">Conclusion</span>
+
+
+**Graph 5**: The graph shows the individual quantity of the top 3 products sold each month. These products, I would like to term as 
+the **'Prime Products'**, as these are high revenue generating products as we have seen. If we focus our target in increasing the sales 
+of these products it would yield higher revenue for Amazon. It can be seen that in holiday seasons there is a spike in the sales, however, 
+this trend falls back in January. To avoid the January slump, I have a few proposals -
+
+
+* **Leverage holiday activity** : We need to take advantage of spike in customers during holiday season and deploy re-targeting tactics such 
+as personalised emails/ads. Also position the products in a way that will make them use their gift cards with added discounts if spent on these products.
+
+
+* **Move older inventory** : Any excess stock of these prime items from last year could be used to cater to the price sensitive shopper and 
+get the inventory moving with a January (post-holiday) clearance sale.
+
+
+* **Increase customer traffic** : Since customers are obsessed with batteries, these batteries can be offered as a token of gift if they 
+purchase other prime products in January.
+
+
+
+
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+md <- salesdat %>%
+  filter(year==2019, Product %in% c('Macbook Pro Laptop','iPhone','ThinkPad Laptop')) %>%
+  group_by(month, Product) %>%
+  summarise(Total_Quantity=sum(as.numeric(Quantity)))
+
+md %>%
+  ggplot(aes(x=month, y=Total_Quantity, fill=Product, label = Total_Quantity) ) +
+  geom_bar(stat='Identity') +
+  #geom_col(fill=alpha("#69b3a2", 0.4),fill=alpha("#69b3a2", 0.6),fill=alpha("#69b3a2", 0.9)) +
+  scale_x_continuous(breaks = 1:12) +
+  annotate("text", x = 2, y = 1650, size = 3,
+           label = "January Sales Slump!",
+           family = "serif", colour = "black") +
+  geom_curve(x = 2.5, xend = 1, y = 1600, yend = 900,
+             curvature = 0.2, lineend = "round",
+             colour = "black", size = 0.3, 
+             arrow = arrow(length = unit(0.3, "cm"),
+                           type="closed"),) +
+  labs(x = "Jan to Dec 2019", y = "Total Prime Products Sold each Month",
+       title = str_to_upper("Prime Products Sales across 2019")) +
+  geom_text(size = 3, colour = 'black', position = position_stack(vjust = 0.5)) +
+  theme_minimal() +
+  scale_fill_manual(values = c(alpha("#69b3a2", 0.6), "mistyrose4", "#c2a493")) +
+  theme(
+    axis.line = element_line(color='black'),
+    text = element_text(family = "serif"),
+    plot.background = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "top")
+    
+```
+
